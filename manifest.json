@@ -14,7 +14,12 @@
   "background": {
     "service_worker": "background.js" 
   },
-
+  "content_scripts": [
+    {
+      "matches": ["https://app.outlier.ai/*/tasks*"],
+      "js": ["content.js"]
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

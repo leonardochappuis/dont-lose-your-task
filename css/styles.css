@@ -249,6 +249,13 @@ button:disabled {
   border: 1px solid #e0e9ff;
 }
 
+.history-role {
+  color: #666;
+  font-size: 11px;
+  margin-left: 5px;
+  font-style: italic;
+}
+
 .history-actions {
   display: flex;
   align-items: center;
@@ -276,4 +283,70 @@ button:disabled {
   background: linear-gradient(90deg, #f5f8ff, #e9f0ff, #f5f8ff);
   background-size: 200% 100%;
   animation: pulse 1.5s infinite;
+}
+
+.prompts-container {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 5px;
+  background-color: #f5f8ff;
+  border-radius: 6px;
+  border: 1px solid #e0e9ff;
+  padding: 8px;
+}
+
+.prompts-empty {
+  color: #999;
+  font-style: italic;
+  font-size: 12px;
+  text-align: center;
+  padding: 10px;
+}
+
+.prompt-item {
+  margin-bottom: 10px;
+  border-bottom: 1px solid #e0e9ff;
+  padding-bottom: 8px;
+}
+
+.prompt-item:last-child {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.prompt-header {
+  font-weight: 700;
+  color: #3f6cb4;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.prompt-text {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #333;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.history-item-main {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.history-prompts-section {
+  padding: 0 12px 10px;
+  background-color: #f9fbff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.history-prompts-btn {
+  background: linear-gradient(135deg, #9c27b0 0%, #ba68c8 100%);
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-left: 10px;
+  white-space: nowrap;
 } 

@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const elements = {
     attemptId: document.getElementById('attemptId'),
+    role: document.getElementById('role'),
+    prompts: document.getElementById('prompts'),
     buttons: {
       forceClaim: document.getElementById('forceClaimBtn'),
       reload: document.getElementById('reloadBtn')
@@ -35,9 +37,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showError(message) {
     elements.attemptId.textContent = 'N/A';
+    elements.role.textContent = 'N/A';
+    elements.prompts.innerHTML = '<div class="prompts-empty">No prompts found</div>';
     elements.error.message.textContent = message;
     elements.error.container.style.display = 'block';
     elements.buttons.forceClaim.disabled = true;
+  }
+
+  function updatePromptsDisplay(prompts) {
+    if (!prompts || prompts.length === 0) {
+      elements.prompts.innerHTML = '<div class="prompts-empty">No prompts found</div>';
+      return;
+    }
+
+    let promptsHtml = '';
+    prompts.forEach(prompt => {
+      promptsHtml += `
+        <div class="prompt-item">
+          <div class="prompt-header">Turn #${prompt.turnNumber}</div>
+          <div class="prompt-text">${prompt.text}</div>
+        </div>
+      `;
+    });
+
+    elements.prompts.innerHTML = promptsHtml;
   }
 
   function updatePopup(data) {
@@ -46,9 +69,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.attemptId) {
       currentAttemptId = data.attemptId;
       elements.attemptId.textContent = data.attemptId;
+      elements.role.textContent = data.role || 'Unknown';
       elements.buttons.forceClaim.disabled = false;
+      
+      // Update prompts display
+      updatePromptsDisplay(data.prompts);
     } else {
       elements.attemptId.textContent = 'Not found';
+      elements.role.textContent = 'Not found';
+      elements.prompts.innerHTML = '<div class="prompts-empty">No prompts found</div>';
       elements.buttons.forceClaim.disabled = true;
       showError(ERROR_MESSAGES.NO_ATTEMPT_ID);
     }
@@ -94,27 +123,65 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const listItem = document.createElement('li');
     listItem.className = 'history-item';
-    listItem.innerHTML = `
+    
+    // Create the main history item content
+    const mainContent = document.createElement('div');
+    mainContent.className = 'history-item-main';
+    mainContent.innerHTML = `
       <div class="history-time">${formattedDate}</div>
       <div class="history-item-row">
         <div class="history-ids">
           <span class="history-id-value">${item.attemptId}</span>
+          <span class="history-role">(${item.role || 'unknown'})</span>
         </div>
         <div class="history-actions">
           <button class="history-claim-btn" data-attempt-id="${item.attemptId}">Claim</button>
+          <button class="history-prompts-btn" data-attempt-id="${item.attemptId}">Prompts</button>
         </div>
       </div>
     `;
     
+    // Create the prompts section (hidden by default)
+    const promptsSection = document.createElement('div');
+    promptsSection.className = 'history-prompts-section';
+    promptsSection.style.display = 'none';
+    
+    if (item.prompts && item.prompts.length > 0) {
+      let promptsHtml = '';
+      item.prompts.forEach(prompt => {
+        promptsHtml += `
+          <div class="prompt-item">
+            <div class="prompt-header">Turn #${prompt.turnNumber}</div>
+            <div class="prompt-text">${prompt.text}</div>
+          </div>
+        `;
+      });
+      promptsSection.innerHTML = promptsHtml;
+    } else {
+      promptsSection.innerHTML = '<div class="prompts-empty">No prompts found</div>';
+    }
+    
+    // Add both sections to the list item
+    listItem.appendChild(mainContent);
+    listItem.appendChild(promptsSection);
+    
     elements.history.list.appendChild(listItem);
     
     // Add click handler to claim button
-    listItem.querySelector('.history-claim-btn').addEventListener('click', (e) => {
+    mainContent.querySelector('.history-claim-btn').addEventListener('click', (e) => {
       const attemptId = e.target.getAttribute('data-attempt-id');
       chrome.runtime.sendMessage({ 
         type: MESSAGE_TYPES.FORCE_CLAIM, 
         attemptId 
       }, () => window.close());
+    });
+    
+    // Add click handler to prompts button
+    mainContent.querySelector('.history-prompts-btn').addEventListener('click', (e) => {
+      const promptsSection = e.target.closest('.history-item').querySelector('.history-prompts-section');
+      const isVisible = promptsSection.style.display !== 'none';
+      promptsSection.style.display = isVisible ? 'none' : 'block';
+      e.target.textContent = isVisible ? 'Prompts' : 'Hide';
     });
   }
 

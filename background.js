@@ -10,7 +10,9 @@ const MESSAGE_TYPES = {
   GET_IDS: 'GET_IDS',
   GET_HISTORY: 'GET_HISTORY',
   FORCE_CLAIM: 'FORCE_CLAIM',
-  UPDATE_IDS: 'UPDATE_IDS'
+  UPDATE_IDS: 'UPDATE_IDS',
+  UPDATE_ROLE: 'UPDATE_ROLE',
+  UPDATE_PROMPTS: 'UPDATE_PROMPTS'
 };
 
 // Store data per tab (tabId -> attemptId mapping)
@@ -72,34 +74,49 @@ function addToHistory(data) {
   
   chrome.storage.local.get(['taskHistory'], (result) => {
     let history = result.taskHistory || [];
-    const exists = history.some(item => item.attemptId === data.attemptId);
+    const existingIndex = history.findIndex(item => item.attemptId === data.attemptId);
     
-    if (!exists) {
+    if (existingIndex === -1) {
       // Add new entry with timestamp
       const newEntry = {
         attemptId: data.attemptId,
+        role: data.role || 'unknown',
+        prompts: data.prompts || [],
         timestamp: new Date().toISOString()
       };
       
       // Add to beginning of history array
       history.unshift(newEntry);
-      
-      // Limit history size
-      if (history.length > CONFIG.MAX_HISTORY_ITEMS) {
-        history = history.slice(0, CONFIG.MAX_HISTORY_ITEMS);
+    } else {
+      // Update existing entry with new data
+      if (data.role && history[existingIndex].role !== data.role) {
+        history[existingIndex].role = data.role;
       }
       
-      chrome.storage.local.set({ taskHistory: history });
+      if (data.prompts && data.prompts.length > 0) {
+        history[existingIndex].prompts = data.prompts;
+      }
+      
+      history[existingIndex].timestamp = new Date().toISOString();
     }
+    
+    // Limit history size
+    if (history.length > CONFIG.MAX_HISTORY_ITEMS) {
+      history = history.slice(0, CONFIG.MAX_HISTORY_ITEMS);
+    }
+    
+    chrome.storage.local.set({ taskHistory: history });
   });
 }
 
-// Handle messages from the popup
+// Handle messages from the popup and content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const messageHandlers = {
     [MESSAGE_TYPES.GET_IDS]: handleGetIds,
     [MESSAGE_TYPES.GET_HISTORY]: handleGetHistory,
-    [MESSAGE_TYPES.FORCE_CLAIM]: handleForceClaim
+    [MESSAGE_TYPES.FORCE_CLAIM]: handleForceClaim,
+    [MESSAGE_TYPES.UPDATE_ROLE]: handleUpdateRole,
+    [MESSAGE_TYPES.UPDATE_PROMPTS]: handleUpdatePrompts
   };
   
   const handler = messageHandlers[message.type];
@@ -116,7 +133,7 @@ function handleGetIds(message, sender, sendResponse) {
     if (currentTabId && tabData[currentTabId]) {
       sendResponse({ ids: tabData[currentTabId] });
     } else {
-      sendResponse({ ids: { attemptId: null } });
+      sendResponse({ ids: { attemptId: null, role: null, prompts: [] } });
     }
   });
   return true; // async response
@@ -149,6 +166,20 @@ function handleForceClaim(message, sender, sendResponse) {
   return true; // async response
 }
 
+function handleUpdateRole(message, sender, sendResponse) {
+  if (sender.tab && message.role) {
+    updateTabData(sender.tab.id, { role: message.role });
+  }
+  return true;
+}
+
+function handleUpdatePrompts(message, sender, sendResponse) {
+  if (sender.tab && message.prompts) {
+    updateTabData(sender.tab.id, { prompts: message.prompts });
+  }
+  return true;
+}
+
 // Clean up tab data when a tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (tabData[tabId]) {
@@ -162,7 +193,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     const fullTasksPath = `${CONFIG.OUTLIER_BASE_URL}${CONFIG.OUTLIER_TASKS_PATH}`;
     if (!changeInfo.url.startsWith(fullTasksPath)) {
       delete tabData[tabId];
-      notifyUiOfDataChange({ attemptId: null });
+      notifyUiOfDataChange({ attemptId: null, role: null, prompts: [] });
     }
   }
 });
